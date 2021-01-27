@@ -126,6 +126,9 @@ resource "aws_instance" "dcs_world_server" {
 Initialize-Disk -Number 1 -PartitionStyle "GPT"
 New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter
 Format-Volume -DriveLetter D -Confirm:$FALSE
+
+Invoke-WebRequest https://www.digitalcombatsimulator.com/upload/iblock/937/DCS_World_OpenBeta_Server_web_5.exe -OutFile D:\DCS_World_OpenBeta_Server.exe
+
 </powershell>
 EOF
 
