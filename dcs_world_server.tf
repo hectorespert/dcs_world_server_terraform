@@ -127,7 +127,64 @@ Initialize-Disk -Number 1 -PartitionStyle "GPT"
 New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter
 Format-Volume -DriveLetter D -Confirm:$FALSE
 
+Write-Output "Downloading DCS World server installer"
 Invoke-WebRequest https://www.digitalcombatsimulator.com/upload/iblock/937/DCS_World_OpenBeta_Server_web_5.exe -OutFile D:\DCS_World_OpenBeta_Server.exe
+
+D:\DCS_World_OpenBeta_Server.exe
+
+Start-Sleep -Seconds 1
+
+$myshell = New-Object -com "Wscript.Shell"
+
+$activated = $myshell.AppActivate("To change")
+
+if ( $activated )
+{
+    Write-Output "DCS World server installer initiated"
+    
+} else {
+    throw "DCS World server installer is not initiated"
+}
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("D:\DCS World OpenBeta Server")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Write-Output "Installing DCS World server, pray"
+
+Start-Sleep -Seconds 10
+
+$myshell.Sendkeys(" ")
+
+Start-Sleep -Seconds 1
+
+$myshell.Sendkeys("{ENTER}")
+
+Write-Output "DCS World server should be installed"
 
 </powershell>
 EOF
