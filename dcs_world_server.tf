@@ -192,7 +192,7 @@ resource "aws_key_pair" "server_key" {
 
 resource "aws_instance" "dcs_world_server" {
   ami = data.aws_ami.amazon_windows_2019_std.image_id
-  instance_type = "t2.micro" //c5ad.xlarge
+  instance_type = "c5ad.xlarge"
   security_groups = [
     aws_security_group.rdp.name,
     aws_security_group.winrm.name,
@@ -225,7 +225,7 @@ resource "aws_instance" "dcs_world_server" {
 
   /*
    * Init instance disk
-   *//*
+   */
   provisioner "remote-exec" {
     inline = [
       "PowerShell -Command \"Initialize-Disk -Number 1 -PartitionStyle \"GPT\"\"",
@@ -234,9 +234,9 @@ resource "aws_instance" "dcs_world_server" {
     ]
   }
 
-  *//*
+  /*
    * Change Administrator Temporal folder
-   *//*
+   */
   provisioner "remote-exec" {
     inline = [
       "PowerShell -Command \"New-Item -Path \\\"D:\\\" -Name \\\"Temp\\\" -ItemType \\\"Directory\\\"\"",
@@ -245,15 +245,15 @@ resource "aws_instance" "dcs_world_server" {
     ]
   }
 
-  *//*
+  /*
    * Check temporal folder
-   *//*
+   */
   provisioner "remote-exec" {
     inline = [
       "PowerShell -Command \"Get-Item Env:TEMP\"",
       "PowerShell -Command \"Get-Item Env:TMP\""
     ]
-  }*/
+  }
 
   /*
    * Configuring Windows Firewall
@@ -262,25 +262,6 @@ resource "aws_instance" "dcs_world_server" {
     inline = [
       "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS TCP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow\"",
       "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS UDP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow\""
-    ]
-  }
-
-  /*
-   * Upload install script
-   */
-  provisioner "file" {
-    source      = "DCSWorldServerInstallScript.ps1"
-    destination = "C:/DCSWorldServerInstallScript.ps1"
-  }
-
-  /*
-   * Excute install script
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "choco install --confirm sysinternals",
-      "psexec -i 1 -d -accepteula cmd"
-      //"psexec -i -d cmd \"PowerShell -ExecutionPolicy Bypass C:\\DCSWorldServerInstallScript.ps1 -drive C: >> C:\\DCSWorldServerInstallScript.log\"",
     ]
   }
 
