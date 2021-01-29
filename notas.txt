@@ -5,3 +5,22 @@ Write-Host  $notepad.HasExited
 Start-Sleep -Seconds 5
 
 Get-Process | Where { $_.MainWindowTitle } | Select-Object ProcessName, MainWindowTitle
+
+https://ready-room.net/blog/2020-12-01-host-a-dcs-server-in-aws/
+
+https://www.serveracademy.com/tutorials/how-to-host-a-dcs-server-full-step-by-step-guide/#windows_firewall
+
+#Write-Output "Downloading DCS World server installer"
+#Invoke-WebRequest https://www.digitalcombatsimulator.com/upload/iblock/937/DCS_World_OpenBeta_Server_web_5.exe -OutFile C:\DCS_World_OpenBeta_Server.exe
+
+#Write-Output "Starting DCS World server installer"
+#$installer = Start-Process -FilePath C:\DCS_World_OpenBeta_Server.exe –PassThru
+
+#Start-Sleep -Seconds 5
+
+#Write-Host  $installer.HasExited
+
+#Write-Output "Starting DCS World server installer"
+
+#Get-Process | Where { $_.MainWindowTitle } | Select-Object ProcessName, MainWindowTitle
+#Get-Process | Where-Object {$_.mainWindowTitle} | Format-Table Id, Name, mainWindowtitle -AutoSize

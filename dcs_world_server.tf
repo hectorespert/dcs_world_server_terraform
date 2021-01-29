@@ -26,6 +26,84 @@ data "aws_ami" "amazon_windows_2019_std" {
   }
 }
 
+resource "aws_security_group" "dcs_tcp" {
+
+  ingress {
+    from_port = 10308
+    to_port = 10308
+    protocol = "tcp"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  ingress {
+    from_port = 10308
+    to_port = 10308
+    protocol = "tcp"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+}
+
+resource "aws_security_group" "dcs_udp" {
+
+  ingress {
+    from_port = 10308
+    to_port = 10308
+    protocol = "udp"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  ingress {
+    from_port = 10308
+    to_port = 10308
+    protocol = "udp"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+}
+
 resource "aws_security_group" "rdp" {
 
   ingress {
@@ -114,67 +192,16 @@ resource "aws_key_pair" "server_key" {
 
 resource "aws_instance" "dcs_world_server" {
   ami = data.aws_ami.amazon_windows_2019_std.image_id
-  instance_type = "c5ad.large" //c5ad.xlarge
+  instance_type = "c5ad.xlarge"
   security_groups = [
     aws_security_group.rdp.name,
-    aws_security_group.winrm.name
+    aws_security_group.winrm.name,
+    aws_security_group.dcs_tcp.name,
+    aws_security_group.dcs_udp.name
   ]
   key_name = aws_key_pair.server_key.key_name
   get_password_data = "true"
-  user_data = <<EOF
-<powershell>
-write-output "Running User Data Script"
-write-host "(host) Running User Data Script"
-
-Set-ExecutionPolicy Unrestricted -Scope LocalMachine -Force -ErrorAction Ignore
-
-# Don't set this before Set-ExecutionPolicy as it throws an error
-$ErrorActionPreference = "stop"
-
-# Remove HTTP listener
-Remove-Item -Path WSMan:\Localhost\listener\listener* -Recurse
-
-# Create a self-signed certificate to let ssl work
-$Cert = New-SelfSignedCertificate -CertstoreLocation Cert:\LocalMachine\My -DnsName "packer"
-New-Item -Path WSMan:\LocalHost\Listener -Transport HTTPS -Address * -CertificateThumbPrint $Cert.Thumbprint -Force
-
-# WinRM
-write-output "Setting up WinRM"
-write-host "(host) setting up WinRM"
-
-cmd.exe /c winrm quickconfig -q
-cmd.exe /c winrm set "winrm/config" '@{MaxTimeoutms="1800000"}'
-cmd.exe /c winrm set "winrm/config/winrs" '@{MaxMemoryPerShellMB="1024"}'
-cmd.exe /c winrm set "winrm/config/service" '@{AllowUnencrypted="true"}'
-cmd.exe /c winrm set "winrm/config/client" '@{AllowUnencrypted="true"}'
-cmd.exe /c winrm set "winrm/config/service/auth" '@{Basic="true"}'
-cmd.exe /c winrm set "winrm/config/client/auth" '@{Basic="true"}'
-cmd.exe /c winrm set "winrm/config/service/auth" '@{CredSSP="true"}'
-cmd.exe /c winrm set "winrm/config/listener?Address=*+Transport=HTTPS" "@{Port=`"5986`";Hostname=`"packer`";CertificateThumbprint=`"$($Cert.Thumbprint)`"}"
-cmd.exe /c netsh advfirewall firewall set rule group="remote administration" new enable=yes
-cmd.exe /c netsh firewall add portopening TCP 5986 "Port 5986"
-cmd.exe /c net stop winrm
-cmd.exe /c sc config winrm start= auto
-cmd.exe /c net start winrm
-
-# Disable windows defender
-Set-MpPreference -DisableRealtimeMonitoring $TRUE
-
-# Init instance disk
-Initialize-Disk -Number 1 -PartitionStyle "GPT"
-New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter
-Format-Volume -DriveLetter D -Confirm:$FALSE
-
-# Change Administrator Temporal folder
-$oldTemp = [System.Environment]::GetEnvironmentVariable('TEMP', 'USER')
-Write-Output "Old TEMP folder: " $oldTemp
-
-Copy-Item -Verbose -Path $oldTemp -Destination D:\Temp -recurse -Force
-[System.Environment]::SetEnvironmentVariable('TEMP', 'D:\Temp', 'USER')
-[System.Environment]::SetEnvironmentVariable('TMP', 'D:\Temp', 'USER')
-
-</powershell>
-EOF
+  user_data = file("bootstrap_win.txt")
 
   connection {
       type = "winrm"
@@ -187,24 +214,56 @@ EOF
       timeout = 15
   }
 
+  /*
+   * Check bootstrap
+   */
   provisioner "remote-exec" {
     inline = [
-      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\"",
+      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\""
+    ]
+  }
+
+  /*
+   * Init instance disk
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"Initialize-Disk -Number 1 -PartitionStyle \"GPT\"\"",
+      "PowerShell -Command \"New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter\"",
+      "PowerShell -Command \"Format-Volume -DriveLetter D -Confirm:$FALSE\"",
+    ]
+  }
+
+  /*
+   * Change Administrator Temporal folder
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"New-Item -Path \\\"D:\\\" -Name \\\"Temp\\\" -ItemType \\\"Directory\\\"\"",
+      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TEMP', 'D:\\Temp', 'USER')\"",
+      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TMP', 'D:\\Temp', 'USER')\""
+    ]
+  }
+
+  /*
+   * Check temporal folder
+   */
+  provisioner "remote-exec" {
+    inline = [
       "PowerShell -Command \"Get-Item Env:TEMP\"",
       "PowerShell -Command \"Get-Item Env:TMP\""
     ]
   }
 
-  /*provisioner "file" {
-    source      = "dcs_server_install_script.ps1"
-    destination = "D:/dcs_server_install_script.ps1"
-  }
-
+  /*
+   * Configuring Windows Firewall
+   */
   provisioner "remote-exec" {
     inline = [
-      "PowerShell -ExecutionPolicy Bypass D:\\dcs_server_install_script.ps1 -drive D:"
+      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS TCP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow\"",
+      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS UDP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow\""
     ]
-  }*/
+  }
 
 }
 
