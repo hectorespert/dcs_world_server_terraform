@@ -9,7 +9,7 @@ terraform {
 
 provider "aws" {
   profile = "default"
-  region = "us-west-2"
+  region = "eu-west-1"
 }
 
 data "aws_ami" "amazon_windows_2019_std" {
@@ -263,6 +263,14 @@ resource "aws_instance" "dcs_world_server" {
       "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS TCP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow\"",
       "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS UDP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow\""
     ]
+  }
+  
+  /*
+   * Upload Missions
+   */
+  provisioner "file" {
+    source      = "DCS.openbeta_server\Missions"
+    destination = "C:\Users\Administrator\Saved Games\DCS.openbeta_server\Missions"
   }
 
 }
