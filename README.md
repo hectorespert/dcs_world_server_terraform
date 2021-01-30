@@ -1,4 +1,4 @@
-# DCS World Dedicated Server Terraform
+# DCS World Dedicated Server Terraform (Work in progress)
 
 A [Terraform](https://www.terraform.io/) project to provide a DCS World dedicated server in AWS.
 
