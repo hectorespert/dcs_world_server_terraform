@@ -295,7 +295,7 @@ resource "aws_instance" "dcs_world_server" {
   provisioner "remote-exec" {
     inline = [
       "PowerShell -Command \"Invoke-WebRequest http://updates.digitalcombatsimulator.com/files/DCS_updater_64bit.zip -OutFile D:\\DCS_Updater.zip\"",
-	  "PowerShell -Command \"Expand-Archive D:\\DCS_Updater.zip -DestinationPath \\\"D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\bin\\\" –Force -Verbose\""
+      "PowerShell -Command \"Expand-Archive D:\\DCS_Updater.zip -DestinationPath \\\"D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\bin\\\" –Force -Verbose\""
     ]
   }
 
