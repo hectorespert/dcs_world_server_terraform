@@ -1,0 +1,1 @@
+options={graphics={height=600,width=800,visibRange="High"},plugins={}}

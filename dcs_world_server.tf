@@ -266,11 +266,37 @@ resource "aws_instance" "dcs_world_server" {
   }
   
   /*
+   * Upload Server Configuration
+   */
+  provisioner "file" {
+    source      = "ServerConfig\\Config"
+    destination = "C:\\Users\\Administrator\\Saved Games\\DCS.openbeta_server\\Config"
+  }
+  
+  /*
    * Upload Missions
    */
   provisioner "file" {
-    source      = "DCS.openbeta_server\Missions"
-    destination = "C:\Users\Administrator\Saved Games\DCS.openbeta_server\Missions"
+    source      = "ServerConfig\\Missions"
+    destination = "C:\\Users\\Administrator\\Saved Games\\DCS.openbeta_server\\Missions"
+  }
+  
+  /*
+   * AutoUpdate Config
+   */
+  provisioner "file" {
+    source      = "autoupdate.cfg"
+    destination = "D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\autoupdate.cfg"
+  }
+  
+  /*
+   * Install DCS Updater
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"Invoke-WebRequest http://updates.digitalcombatsimulator.com/files/DCS_updater_64bit.zip -OutFile D:\\DCS_Updater.zip\"",
+	  "PowerShell -Command \"Expand-Archive D:\\DCS_Updater.zip -DestinationPath \\\"D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\bin\\\" –Force -Verbose\""
+    ]
   }
 
 }
@@ -279,6 +305,6 @@ output "server-dns" {
   value = aws_instance.dcs_world_server.public_dns
 }
 
-output "password_decrypted" {
+output "password-decrypted" {
   value = rsadecrypt(aws_instance.dcs_world_server.password_data, tls_private_key.rsa_key.private_key_pem)
 }
