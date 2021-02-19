@@ -9,7 +9,7 @@ terraform {
 
 provider "aws" {
   profile = "default"
-  region = "eu-west-1"
+  region = "eu-west-3"
 }
 
 data "aws_ami" "amazon_windows_2019_std" {
@@ -26,7 +26,7 @@ data "aws_ami" "amazon_windows_2019_std" {
   }
 }
 
-resource "aws_security_group" "dcs_tcp" {
+resource "aws_security_group" "dcs" {
 
   ingress {
     from_port = 10308
@@ -63,10 +63,7 @@ resource "aws_security_group" "dcs_tcp" {
       "::/0"
     ]
   }
-}
-
-resource "aws_security_group" "dcs_udp" {
-
+  
   ingress {
     from_port = 10308
     to_port = 10308
@@ -104,7 +101,8 @@ resource "aws_security_group" "dcs_udp" {
   }
 }
 
-resource "aws_security_group" "srs_tcp" {
+
+resource "aws_security_group" "srs" {
 
   ingress {
     from_port = 5002
@@ -141,10 +139,7 @@ resource "aws_security_group" "srs_tcp" {
       "::/0"
     ]
   }
-}
-
-resource "aws_security_group" "srs_udp" {
-
+  
   ingress {
     from_port = 5002
     to_port = 5002
@@ -274,10 +269,8 @@ resource "aws_instance" "dcs_world_server" {
   security_groups = [
     aws_security_group.rdp.name,
     aws_security_group.winrm.name,
-    aws_security_group.dcs_tcp.name,
-    aws_security_group.dcs_udp.name,
-	aws_security_group.srs_tcp.name,
-    aws_security_group.srs_udp.name
+    aws_security_group.dcs.name,
+	aws_security_group.srs.name
   ]
   key_name = aws_key_pair.server_key.key_name
   get_password_data = "true"
@@ -299,9 +292,52 @@ resource "aws_instance" "dcs_world_server" {
    */
   provisioner "remote-exec" {
     inline = [
-      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\"",
+      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\""
+    ]
+  }
+  
+  /*
+   * Init instance disk
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"Initialize-Disk -Number 1 -PartitionStyle \"GPT\"\"",
+      "PowerShell -Command \"New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter\"",
+      "PowerShell -Command \"Format-Volume -DriveLetter D -Confirm:$FALSE\"",
+    ]
+  }
+
+  /*
+   * Change Administrator Temporal folder
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"New-Item -Path \\\"D:\\\" -Name \\\"Temp\\\" -ItemType \\\"Directory\\\"\"",
+      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TEMP', 'D:\\Temp', 'USER')\"",
+      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TMP', 'D:\\Temp', 'USER')\""
+    ]
+  }
+  
+   /*
+   * Check temporal folder
+   */
+  provisioner "remote-exec" {
+    inline = [
 	  "PowerShell -Command \"Get-Item Env:TEMP\"",
       "PowerShell -Command \"Get-Item Env:TMP\""
+    ]
+  }
+  
+  /*
+   * Configuring Windows Firewall
+   */
+  provisioner "remote-exec" {
+    inline = [
+      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS TCP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow\"",
+      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS UDP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow\"",
+	  "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS WebGUI TCP Inbound\\\" -Direction Inbound -LocalPort 8088 -Protocol UDP -Action Allow\"",
+	  "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"SRS TCP Inbound\\\" -Direction Inbound -LocalPort 5002 -Protocol TCP -Action Allow\"",
+      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"SRS UDP Inbound\\\" -Direction Inbound -LocalPort 5002 -Protocol UDP -Action Allow\""
     ]
   }
   
