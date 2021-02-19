@@ -104,6 +104,84 @@ resource "aws_security_group" "dcs_udp" {
   }
 }
 
+resource "aws_security_group" "srs_tcp" {
+
+  ingress {
+    from_port = 5002
+    to_port = 5002
+    protocol = "tcp"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  ingress {
+    from_port = 5002
+    to_port = 5002
+    protocol = "tcp"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+}
+
+resource "aws_security_group" "srs_udp" {
+
+  ingress {
+    from_port = 5002
+    to_port = 5002
+    protocol = "udp"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  ingress {
+    from_port = 5002
+    to_port = 5002
+    protocol = "udp"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"
+    ]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    ipv6_cidr_blocks = [
+      "::/0"
+    ]
+  }
+}
+
 resource "aws_security_group" "rdp" {
 
   ingress {
@@ -197,7 +275,9 @@ resource "aws_instance" "dcs_world_server" {
     aws_security_group.rdp.name,
     aws_security_group.winrm.name,
     aws_security_group.dcs_tcp.name,
-    aws_security_group.dcs_udp.name
+    aws_security_group.dcs_udp.name,
+	aws_security_group.srs_tcp.name,
+    aws_security_group.srs_udp.name
   ]
   key_name = aws_key_pair.server_key.key_name
   get_password_data = "true"
@@ -219,49 +299,9 @@ resource "aws_instance" "dcs_world_server" {
    */
   provisioner "remote-exec" {
     inline = [
-      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\""
-    ]
-  }
-
-  /*
-   * Init instance disk
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "PowerShell -Command \"Initialize-Disk -Number 1 -PartitionStyle \"GPT\"\"",
-      "PowerShell -Command \"New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter\"",
-      "PowerShell -Command \"Format-Volume -DriveLetter D -Confirm:$FALSE\"",
-    ]
-  }
-
-  /*
-   * Change Administrator Temporal folder
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "PowerShell -Command \"New-Item -Path \\\"D:\\\" -Name \\\"Temp\\\" -ItemType \\\"Directory\\\"\"",
-      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TEMP', 'D:\\Temp', 'USER')\"",
-      "PowerShell -Command \"[System.Environment]::SetEnvironmentVariable('TMP', 'D:\\Temp', 'USER')\""
-    ]
-  }
-
-  /*
-   * Check temporal folder
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "PowerShell -Command \"Get-Item Env:TEMP\"",
+      "PowerShell -Command \"Get-Content -Path C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Log\\UserdataExecution.log\"",
+	  "PowerShell -Command \"Get-Item Env:TEMP\"",
       "PowerShell -Command \"Get-Item Env:TMP\""
-    ]
-  }
-
-  /*
-   * Configuring Windows Firewall
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS TCP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow\"",
-      "PowerShell -Command \"New-NetFirewallRule -DisplayName \\\"DCS UDP Inbound\\\" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow\""
     ]
   }
   
@@ -279,24 +319,6 @@ resource "aws_instance" "dcs_world_server" {
   provisioner "file" {
     source      = "ServerConfig\\Missions"
     destination = "C:\\Users\\Administrator\\Saved Games\\DCS.openbeta_server\\Missions"
-  }
-  
-  /*
-   * AutoUpdate Config
-   */
-  provisioner "file" {
-    source      = "autoupdate.cfg"
-    destination = "D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\autoupdate.cfg"
-  }
-  
-  /*
-   * Install DCS Updater
-   */
-  provisioner "remote-exec" {
-    inline = [
-      "PowerShell -Command \"Invoke-WebRequest http://updates.digitalcombatsimulator.com/files/DCS_updater_64bit.zip -OutFile D:\\DCS_Updater.zip\"",
-      "PowerShell -Command \"Expand-Archive D:\\DCS_Updater.zip -DestinationPath \\\"D:\\Program Files\\Eagle Dynamics\\DCS World OpenBeta Server\\bin\\\" –Force -Verbose\""
-    ]
   }
 
 }

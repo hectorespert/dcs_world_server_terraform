@@ -36,4 +36,36 @@ cmd.exe /c net start winrm
 write-host "Disabling windows defender"
 Set-MpPreference -DisableRealtimeMonitoring $TRUE
 
+write-host "Init instance disk"
+Initialize-Disk -Number 1 -PartitionStyle "GPT"
+New-Partition -DiskNumber 1 -UseMaximumSize -AssignDriveLetter
+Format-Volume -DriveLetter D -Confirm:$FALSE
+
+write-host "Change Administrator Temporal folder"
+New-Item -Path D: -Name "Temp" -ItemType "Directory"
+[System.Environment]::SetEnvironmentVariable('TEMP', 'D:\Temp', 'USER')
+[System.Environment]::SetEnvironmentVariable('TMP', 'D:\Temp', 'USER')
+
+write-host "Configuring Windows Firewall"
+New-NetFirewallRule -DisplayName "DCS TCP Inbound" -Direction Inbound -LocalPort 10308 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "DCS UDP Inbound" -Direction Inbound -LocalPort 10308 -Protocol UDP -Action Allow
+
+# DCS WebGUI TCP inbound  rules
+New-NetFirewallRule -DisplayName "DCS WebGUI TCP Inbound" -Direction Inbound -LocalPort 8088 -Protocol TCP -Action Allow
+
+# TacView Realtime Telemetry
+#New-NetFirewallRule -DisplayName "TacView Realtime Telemetry Inbound" -Direction Inbound -LocalPort 42674 -Protocol TCP -Action Allow
+
+# TacView Remote Control
+#New-NetFirewallRule -DisplayName "TacView Remote Control Inbound" -Direction Inbound -LocalPort 42675 -Protocol TCP -Action Allow
+
+# DCS SRS
+New-NetFirewallRule -DisplayName "DCS SRS TCP" -Direction Inbound -LocalPort 5002 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "DCS SRS UDB" -Direction Inbound -LocalPort 5002 -Protocol UDP -Action Allow
+
+Write-Host Download installers
+Invoke-WebRequest https://www.digitalcombatsimulator.com/upload/iblock/937/DCS_World_OpenBeta_Server_web_5.exe -OutFile C:\Users\Administrator\Desktop\DCS_World_OpenBeta_Server_Installer.exe
+Invoke-WebRequest https://github.com/ciribob/DCS-SimpleRadioStandalone/releases/download/1.9.5.0/SRS-AutoUpdater.exe -OutFile C:\Users\Administrator\Desktop\SRS-AutoUpdater.exe
+
+
 </powershell>
